@@ -11,6 +11,7 @@ public class EnemyController : MonoBehaviour
     public float stopDuration =3f;
     public float chaseSpd = 3.5f;
     public float chaseRange  = 5f;
+    public Transform attackPoint;
     public float atkRange = 1f;
     public float atkCoolDown = 2f;
     public Transform leftBoundary;
@@ -50,16 +51,13 @@ public class EnemyController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(isAttacking)
-        {
-            return;
-        }
-
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
-        if(distanceToPlayer <= atkRange)
+        if(distanceToPlayer <= atkRange && Time.time >= lastAttackTime + atkCoolDown)
         {
-            StartCoroutine(Attack());
+            animator.SetBool("IsRunning", false);
+            StartCoroutine(PerformAttack());
+            lastAttackTime = Time.time; // Reset attack cooldown
         }
         else if(distanceToPlayer <= chaseRange)
         {
@@ -105,45 +103,38 @@ public class EnemyController : MonoBehaviour
     //when in the range of chase enemy will chase the player
     void ChasePlayer()
     {
-        isChasing = true;
-        animator.SetBool("isRunning", true);
+        if (isChasing == true)
+        {
+            animator.SetBool("isRunning", true);
 
-        if(player.position.x > transform.position.x)
-        {
-            rb.velocity = new Vector2(chaseSpd, rb.velocity.y);
-            if(!isFacingRight)
+            Vector2 direction = (player.position - transform.position).normalized;
+            if ((direction.x > 0 && !isFacingRight) || (direction.x < 0 && isFacingRight))
             {
                 Flip();
             }
-        }
-        else
-        {
-            rb.velocity = new Vector2(-chaseSpd, rb.velocity.y);
-            if(isFacingRight)
-            {
-                Flip();
-            }
+            transform.position = Vector2.MoveTowards(transform.position, player.position, chaseSpd * Time.deltaTime);
         }
     }
 
-    IEnumerator Attack()
+    IEnumerator PerformAttack()
     {
-        isAttacking = true;
         rb.velocity = Vector2.zero; // to stop any movement to able to atk
-        // animator.SetBool("Attack");
-        
+        isAttacking = true;
+        animator.SetTrigger("Attack");
+
         // Wait for the attack animation and cooldown to finish
-         yield return new WaitForSeconds(atkCoolDown);
+        yield return new WaitForSeconds(atkCoolDown);
+        animator.SetTrigger("Attack");
         isAttacking = false;
     }
-    
+
     void ResumePatrol()
     {
         SetNewTargetPosition();
         isStopped = false;
         animator.SetBool("walk", true);
     }
-
+    
     void FlipSprite()
     {
         // This will flip the sprite depending on the direction the enemy is facing
@@ -161,10 +152,10 @@ public class EnemyController : MonoBehaviour
 
     void Flip()
     {
-        isFacingRight = !isFacingRight;
-        Vector3 localScale = transform.localScale;
-        localScale.x *= -1;
-        transform.localScale = localScale;
+            isFacingRight = !isFacingRight;
+            Vector3 localScale = transform.localScale;
+            localScale.x *= -1;
+            transform.localScale = localScale;
     }
 
     public void EnemyTakeDamage(int damage)
