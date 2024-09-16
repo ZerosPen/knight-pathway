@@ -11,9 +11,10 @@ public class EnemyController : MonoBehaviour
     public float stopDuration =3f;
     public float chaseSpd = 3.5f;
     public float chaseRange  = 5f;
-    public Transform attackPoint;
+    public int atkdamage = 50;
     public float atkRange = 1f;
     public float atkCoolDown = 2f;
+    public Transform attackPoint;
     public Transform leftBoundary;
     public Transform rightBoundary;
     public LayerMask playerLayer;
@@ -53,20 +54,25 @@ public class EnemyController : MonoBehaviour
     {
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
-        if(distanceToPlayer <= atkRange && Time.time >= lastAttackTime + atkCoolDown)
+        if(distanceToPlayer <= chaseRange && distanceToPlayer >= atkRange)
         {
-            animator.SetBool("IsRunning", false);
+            
+            isChasing = true;
+            ChasePlayer();
+        }
+        if (distanceToPlayer <= atkRange && Time.time >= lastAttackTime + atkCoolDown)
+        {
+            //animator.SetBool("IsRunning", false);
+            //animator.SetBool("walk", false);
+            isAttacking = true;
             StartCoroutine(PerformAttack());
             lastAttackTime = Time.time; // Reset attack cooldown
-        }
-        else if(distanceToPlayer <= chaseRange)
-        {
-            ChasePlayer();
         }
         else
         {
             animator.SetBool("isRunning", false);
             isChasing = false;
+            isAttacking = false;
 
             if (!isStopped)
             {
@@ -119,13 +125,39 @@ public class EnemyController : MonoBehaviour
     IEnumerator PerformAttack()
     {
         rb.velocity = Vector2.zero; // to stop any movement to able to atk
-        isAttacking = true;
-        animator.SetTrigger("Attack");
+        if (isAttacking == true)
+        {
+            animator.SetBool("IsRunning", false);
+            animator.SetBool("walk", false);
+            animator.SetTrigger("Attack");
+            AtkPlayer();
+            Vector2 direction = (player.position - transform.position).normalized;
+            if ((direction.x > 0 && !isFacingRight) || (direction.x < 0 && isFacingRight))
+            {
+                Flip();
+            }
+        }
 
         // Wait for the attack animation and cooldown to finish
         yield return new WaitForSeconds(atkCoolDown);
-        animator.SetTrigger("Attack");
         isAttacking = false;
+    }
+
+    public void AtkPlayer()
+    {
+        Collider2D[] hitplayers = Physics2D.OverlapCircleAll(attackPoint.position, atkRange, playerLayer);
+
+        if (attackPoint == null)
+        {
+            Debug.LogError("Attack Point is not assigned!");
+            return;
+        }
+
+        foreach (Collider2D collider in hitplayers)
+        {
+            player.GetComponent<PlayerController>().PlayertakeDamage(Random.Range(5, 50));
+        }
+
     }
 
     void ResumePatrol()
@@ -158,10 +190,11 @@ public class EnemyController : MonoBehaviour
             transform.localScale = localScale;
     }
 
+
     public void EnemyTakeDamage(int damage)
     {
         currentHealt -= damage;
-
+       
         animator.SetTrigger("Hit");
 
         if (currentHealt <= 0)
@@ -172,7 +205,6 @@ public class EnemyController : MonoBehaviour
 
     void EnemyDefeat()
     {
-        Debug.Log("Enemy Die");
         animator.SetBool("IsDead", true);
         //wannt make the enemy still in ground for around 5s then drop/rb is false;
         GetComponent<Collider2D>().enabled = false;

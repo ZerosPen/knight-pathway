@@ -10,10 +10,9 @@ public class PlayerController : MonoBehaviour
     public LayerMask groundLayer;
     public Transform groundCheck;
     public float groundCheckRadius = 0.2f;
-    //  [SerializeField] private int hitPoints = 100;
-     public int currentHealt;
+    [SerializeField] private int maxHitpoints = 100;
+    public int currentHealt;
 
-    
     private Rigidbody2D rb;
     private bool isGrounded;
     private bool isFacingRight = true;
@@ -34,7 +33,7 @@ public class PlayerController : MonoBehaviour
     public float blockDuration = 1.0f; // Duration the player can block for
     private float blockEndTime;
 
-    // Sprint Settings
+     //Sprint Settings
     [SerializeField] private float runSpd = 1.5f;
     private bool isRunning = false;
 
@@ -54,6 +53,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         jumpCount = maxJumps;
+        currentHealt = maxHitpoints;
     }
 
     void Update()
@@ -106,9 +106,12 @@ public class PlayerController : MonoBehaviour
     }
 
 //For Healpoint Character
-    void PlayertakeDamage(int dmg)
+    public void PlayertakeDamage(int damage)
     {
-        currentHealt -= dmg;
+        Debug.Log("damage " + damage);
+        currentHealt -= damage;
+
+        animator.SetTrigger("hit");
 
         if (currentHealt <= 0)
         {
@@ -190,7 +193,7 @@ public class PlayerController : MonoBehaviour
         // Damage them
         foreach (Collider2D enemy in hitEnemies)
         {
-            Debug.Log("Hit "+ enemy.name + attackDamage);
+            
             // Assume the enemy has a script with a method TakeDamage(int damage)
              enemy.GetComponent<EnemyController>().EnemyTakeDamage(attackDamage);
         }
@@ -237,7 +240,7 @@ public class PlayerController : MonoBehaviour
 
     void playerDefeat()
     {
-        Debug.Log("Enemy Die");
+        Debug.Log("player is Die");
         animator.SetBool("IsDead", true);
     }
     void OnDrawGizmosSelected()
